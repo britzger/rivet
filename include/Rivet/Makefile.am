@@ -35,6 +35,7 @@ nobase_pkginclude_HEADERS += \
   Projections/Beam.hh \
   Projections/BeamThrust.hh \
   Projections/CentralEtHCM.hh \
+  Projections/Centrality.hh \
   Projections/ChargedFinalState.hh \
   Projections/ChargedLeptons.hh \
   Projections/ConstLossyFinalState.hh \
