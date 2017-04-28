@@ -26,6 +26,9 @@ namespace Rivet {
     /// Default destructor
     virtual ~CutBase() {}
 
+    /// Description of a cut
+    virtual std::string description() const = 0;
+    
   protected:
 
     /// @internal Actual accept implementation, overloadable by various cut combiners
@@ -113,7 +116,11 @@ namespace Rivet {
 
   //@}
 
-
+  /// Get quantity name used in cut
+  std::string toString(Cuts::Quantity qty);
+  /// Get quantity value as a string
+  std::string toString(double val);
+  
 }
 
 #endif
