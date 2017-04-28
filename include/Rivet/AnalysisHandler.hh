@@ -176,6 +176,11 @@ namespace Rivet {
     /// functions of all included analysis objects.
     void finalize();
 
+    /// Function for postprocessing is introduced. This allows for further processing
+    /// e. g. additional analyses which were done in the past but should be included
+    /// in a certain analysis in one way or the other
+    void post();
+    
     /// Method reads YODA files and adds the contained AnalysisObjects
     /// to the member map "_readObjects".
     void readData(const std::string& filename);
@@ -196,7 +201,7 @@ namespace Rivet {
 
 
   private:
-
+    
     /// Map containing read YODA objects.
     std::map< std::string, AnalysisObjectPtr > _readObjects;
     bool _haveReadData;

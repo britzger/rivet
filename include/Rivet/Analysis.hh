@@ -90,7 +90,22 @@ namespace Rivet {
     /// overridden function must make sure it first calls the base class
     /// function.
     virtual void finalize() { }
-
+    
+    /// A new method for postprocessing analyses is introduced.
+    /// This function can be called to handle e. g. merging analyses from
+    /// different runs. Besides finalize() this method can be called as
+    /// often as wanted because it only depends on finished processed
+    /// histograms which stay itself untouched but are used to produce
+    /// further output. This method is virtual because it is considered
+    /// to be overwritten in inherited classes.
+    virtual void post() { }
+    
+    /// Replaces the content of booked histograms if there were those
+    /// with the same path in _analysisObjectsRead. So far, the method is
+    /// called in AnalysisHandler::init method such that the replacement
+    /// is done automatically. This can of course be changed.
+    void replaceByData( std::map< std::string, AnalysisObjectPtr > readObjects);
+    
     //@}
 
 
@@ -979,7 +994,7 @@ namespace Rivet {
     /// Storage of all plot objects
     /// @todo Make this a map for fast lookup by path?
     vector<AnalysisObjectPtr> _analysisobjects;
-
+    bool _haveReadData;
     /// @name Cross-section variables
     //@{
     double _crossSection;

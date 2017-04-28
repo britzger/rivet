@@ -172,6 +172,43 @@ namespace Rivet {
   }
 
 
+  /// This method does three things: (1) In case, the hanlder is not initialized,
+  /// Analysis::init() is called for each analysis, (2) if YODA objects have been
+  /// read before, those are passed to the analysis which replaces the content of
+  /// the booked objects and after all (3) Analysis::post() is called.
+  void AnalysisHandler::post() {
+    MSG_INFO("Post-processing analyses");
+    if( _haveReadData ) {
+      MSG_INFO("Replace by data in case paths are matching");
+    }
+    for (AnaHandle a : _analyses) {
+      if( !_initialised ) {
+        MSG_INFO( "No MC running: The post-processing is based on YODA files only." );
+        try {
+          a->_allowProjReg = true;
+          a->init();
+        } catch( const Error& err ) {
+          MSG_ERROR( "Unexpected error in " << a->name() << "::init() during the initialisation for the post-processing: " << err.what() );
+          exit(1);
+        }
+      }
+      if( _haveReadData ) {
+        try {
+          MSG_INFO("Replacing data ...");
+          a->replaceByData( _readObjects );
+        } catch (const UserError& err) {
+          MSG_ERROR("Error in analysis " << a->name() << ": " << err.what() ) ;
+	}
+      }
+      try {
+        a->post();
+      } catch (const Error& err) {
+        MSG_ERROR("Unexpected error in post() in analysis " << a->name() );
+      }
+    }
+    MSG_INFO("Post-processing finished");
+  }
+
   AnalysisHandler& AnalysisHandler::addAnalysis(const string& analysisname) {
     // Check for a duplicate analysis
     /// @todo Might we want to be able to run an analysis twice, with different params?
@@ -304,6 +341,7 @@ namespace Rivet {
     }
     _haveReadData = true;
   }
+
 
   string AnalysisHandler::runName() const { return _runname; }
   size_t AnalysisHandler::numEvents() const { return _numEvents; }

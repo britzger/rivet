@@ -9,7 +9,8 @@ namespace Rivet {
 
 
   Analysis::Analysis(const string& name)
-    : _crossSection(-1.0),
+    : _haveReadData(false),
+      _crossSection(-1.0),
       _gotCrossSection(false),
       _analysishandler(NULL)
   {
@@ -21,7 +22,73 @@ namespace Rivet {
     _info = move(ai);
     assert(_info);
   }
+  
+  
+  /// xyz This method replaces the content of all those pointers in "_analysisobjects" which have
+  /// a partner in "objectsRead". The AnalysisObjectPtr are matched by their path.
+  void Analysis::replaceByData( std::map< std::string, AnalysisObjectPtr > readObjects) {
 
+    if( _haveReadData ) {
+      MSG_WARNING("Analysis " << name() << " already got data. This is the second time and the older objects will be overwritten!");
+    }
+
+    for( AnalysisObjectPtr ao : _analysisobjects ) {
+
+      if( !readObjects[ao->path()] ) {
+        continue;
+      }
+
+      /// xyz type cast from AnalysisObjectPtr to respective pointer in order to check for number of
+      // entries and points, respectively. Further, the operator "=" for YODA::AnalysisObject does
+      // only copy the path/names and not the entries. However, this is done by the operator respective
+      // "=" of YODA::Histo1D etc.
+      // @note may not be the most efficient solution
+      Histo1DPtr tmpHisto1D, tmpHisto1DRead;
+      Histo2DPtr tmpHisto2D, tmpHisto2DRead;
+      Profile1DPtr tmpProfile1D, tmpProfile1DRead;
+      Profile2DPtr tmpProfile2D, tmpProfile2DRead;
+      Scatter1DPtr tmpScatter1D, tmpScatter1DRead;
+      Scatter2DPtr tmpScatter2D, tmpScatter2DRead;
+      Scatter3DPtr tmpScatter3D, tmpScatter3DRead;
+      
+      // assume that type casting in the following is successful. Will be set to false if none of the
+      // type castings was successful
+      bool replaced = true;
+
+      try {
+
+        if( ( tmpHisto1D = dynamic_pointer_cast< YODA::Histo1D >( ao ) ) && ( tmpHisto1DRead = dynamic_pointer_cast< YODA::Histo1D >( readObjects[ao->path()] ) ) ) {
+          *tmpHisto1D = *tmpHisto1DRead;
+        } else if ( ( tmpHisto2D = dynamic_pointer_cast< YODA::Histo2D >( ao ) ) && ( tmpHisto2DRead = dynamic_pointer_cast< YODA::Histo2D >( readObjects[ao->path()] ) ) ) {
+          *tmpHisto2D = *tmpHisto2DRead;
+        } else if ( ( tmpProfile1D = dynamic_pointer_cast< YODA::Profile1D >( ao ) ) && ( tmpProfile1DRead = dynamic_pointer_cast< YODA::Profile1D >( readObjects[ao->path()] ) ) ) {
+          *tmpProfile1D = *tmpProfile1DRead;
+        } else if ( ( tmpProfile2D = dynamic_pointer_cast< YODA::Profile2D >( ao ) ) && ( tmpProfile2DRead = dynamic_pointer_cast< YODA::Profile2D >( readObjects[ao->path()] ) ) ) {
+          *tmpProfile2D = *tmpProfile2DRead;
+        } else if ( ( tmpScatter1D = dynamic_pointer_cast< YODA::Scatter1D >( ao ) ) && ( tmpScatter1DRead = dynamic_pointer_cast< YODA::Scatter1D >( readObjects[ao->path()] ) ) ) {
+          *tmpScatter1D = *tmpScatter1DRead;
+        } else if ( ( tmpScatter2D = dynamic_pointer_cast< YODA::Scatter2D >( ao ) ) && ( tmpScatter2DRead = dynamic_pointer_cast< YODA::Scatter2D >( readObjects[ao->path()] ) ) ) {
+          *tmpScatter2D = *tmpScatter2DRead;
+        } else if ( ( tmpScatter3D = dynamic_pointer_cast< YODA::Scatter3D >( ao ) ) && ( tmpScatter3DRead = dynamic_pointer_cast< YODA::Scatter3D >( readObjects[ao->path()] ) ) ) {
+          *tmpScatter3D = *tmpScatter3DRead;
+        } else {
+          MSG_ERROR( "Unknown analysis object type " << ao->type() << " with path " << ao->path() );
+          replaced = false;
+        }
+
+      } catch(...) {
+	throw UserError("Replacing histograms by given data failed in analysis");
+      }
+
+      if( replaced ) {
+        MSG_INFO("Histogram with path " << ao->path() << " replaced");
+        _haveReadData = true; // set to true because at least one object has been read
+      }
+
+    }
+    
+  }
+  
   double Analysis::sqrtS() const {
     return handler().sqrtS();
   }
