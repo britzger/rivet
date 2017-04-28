@@ -176,6 +176,10 @@ namespace Rivet {
     /// functions of all included analysis objects.
     void finalize();
 
+    /// Method reads YODA files and adds the contained AnalysisObjects
+    /// to the member map "_readObjects".
+    void readData(const std::string& filename);
+
     //@}
 
 
@@ -192,6 +196,10 @@ namespace Rivet {
 
 
   private:
+
+    /// Map containing read YODA objects.
+    std::map< std::string, AnalysisObjectPtr > _readObjects;
+    bool _haveReadData;
 
     /// The collection of Analysis objects to be used.
     set<AnaHandle, CmpAnaHandle> _analyses;

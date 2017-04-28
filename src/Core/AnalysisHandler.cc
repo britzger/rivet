@@ -7,12 +7,13 @@
 #include "Rivet/Tools/Logging.hh"
 #include "Rivet/Projections/Beam.hh"
 #include "YODA/WriterYODA.h"
+#include "YODA/ReaderYODA.h"
 
 namespace Rivet {
 
 
-  AnalysisHandler::AnalysisHandler(const string& runname)
-    : _runname(runname), _numEvents(0),
+  AnalysisHandler::AnalysisHandler(const string& runname) // xyz Initialize introduced member "_haveReadData"
+    : _haveReadData(false), _runname(runname), _numEvents(0),
       _sumOfWeights(0.0), _xs(NAN),
       _initialised(false), _ignoreBeams(false)
   {}
@@ -244,6 +245,65 @@ namespace Rivet {
     }
   }
 
+
+  /// xyz Reads Objects from a given YODA file and stores those in a map. No duplicates possible
+  /// since they would be overwritten. @note Method has to be called before AnalysisHandler::init
+  /// since there potential read objects are given to the added analyses.
+  void AnalysisHandler::readData( const std::string& filename ) {
+
+    YODA::Reader &reader = YODA::mkReader( filename );
+
+    std::vector< YODA::AnalysisObject* > aos;
+
+    try {
+      reader.read( filename, aos );
+    } catch(const YODA::ReadError& err) {
+      MSG_ERROR( "Error in AnalysisHandler::readData: " << err.what() );
+      exit(1);
+    }
+    MSG_INFO( "Read data from " << filename );
+
+    for( const auto ao : aos ) {
+      //MSG_INFO( "type of ao is " << typeid( ao ).name() );
+      AnalysisObjectPtr append( ao );
+
+      int numEntries = 0;
+
+      try {
+
+        if( Histo1DPtr tmpHisto1D = dynamic_pointer_cast< YODA::Histo1D >( append ) ) {
+          numEntries = tmpHisto1D->numEntries();
+	} else if ( Histo2DPtr tmpHisto2D = dynamic_pointer_cast< YODA::Histo2D >( append ) ) {
+          numEntries = tmpHisto2D->numEntries();
+        } else if ( Profile1DPtr tmpProfile1D = dynamic_pointer_cast< YODA::Profile1D >( append ) ) {
+          numEntries = tmpProfile1D->numEntries();
+        } else if ( Profile2DPtr tmpProfile2D = dynamic_pointer_cast< YODA::Profile2D >( append ) ) {
+          numEntries = tmpProfile2D->numEntries();
+	} else if ( Scatter1DPtr tmpScatter1D = dynamic_pointer_cast< YODA::Scatter1D >( append ) ) {
+          numEntries = tmpScatter1D->numPoints();
+        } else if ( Scatter2DPtr tmpScatter2D = dynamic_pointer_cast< YODA::Scatter2D >( append ) ) {
+          numEntries = tmpScatter2D->numPoints();
+        } else if ( Scatter3DPtr tmpScatter3D = dynamic_pointer_cast< YODA::Scatter3D >( append ) ) {
+          numEntries = tmpScatter3D->numPoints();
+        }
+
+        if( numEntries <= 0 ) {
+          continue;
+        }
+
+        if ( !_readObjects[ao->path()] ) {
+          _readObjects[ao->path()] = append;
+        }
+        // in case an object with the given path is already read try to merge the new and the old one and save this version
+        // else
+	// merge...; or fail
+      } catch(...) {
+        MSG_ERROR( "Unable to read data!" );
+        throw UserError( "Unexpected error while reading data!" );
+      }
+    }
+    _haveReadData = true;
+  }
 
   string AnalysisHandler::runName() const { return _runname; }
   size_t AnalysisHandler::numEvents() const { return _numEvents; }
