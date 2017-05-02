@@ -81,14 +81,8 @@ namespace Rivet {
   double quantile(double value, const Histo1DPtr hist) {
     
     // Check if there are entries in the histogram
-    try {
-      if (hist->numEntries() == 0) {
-	throw WeightError("There are no entires in the histogram!");
-	//throw YODA::LowStatsError("Insufficient statistics in the histogram!");
-      }
-    } catch (...) {
-      //MSG_ERROR("Unable to calculate quantile of a histogram");
-      
+    if (hist->numEntries() == 0) {
+      throw WeightError("There are no entires in the histogram!");
     }
     
     // Integration ranges
