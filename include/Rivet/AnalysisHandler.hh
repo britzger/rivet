@@ -183,7 +183,7 @@ namespace Rivet {
     
     /// Method reads YODA files and adds the contained AnalysisObjects
     /// to the member map "_readObjects".
-    void readData(const std::string& filename);
+    void readingData(const std::string& filename);
 
     //@}
 

@@ -182,9 +182,9 @@ namespace Rivet {
   /// the booked objects and after all (3) Analysis::post() is called.
   void AnalysisHandler::post() {
     MSG_INFO("Post-processing analyses");
-    if( _haveReadData ) {
+    /*if( _haveReadData ) {
       MSG_INFO("Replace by data in case paths are matching");
-    }
+      }*/
     for (AnaHandle a : _analyses) {
       if( !_initialised ) {
         MSG_INFO( "No MC running: The post-processing is based on YODA files only." );
@@ -196,14 +196,14 @@ namespace Rivet {
           exit(1);
         }
       }
-      if( _haveReadData ) {
+      /*if( _haveReadData ) {
         try {
           MSG_INFO("Replacing data ...");
           a->replaceByData( _readObjects );
         } catch (const UserError& err) {
           MSG_ERROR("Error in analysis " << a->name() << ": " << err.what() ) ;
 	}
-      }
+	}*/
       try {
         a->post();
       } catch (const Error& err) {
@@ -323,7 +323,7 @@ namespace Rivet {
   /// xyz Reads Objects from a given YODA file and stores those in a map. No duplicates possible
   /// since they would be overwritten. @note Method has to be called before AnalysisHandler::init
   /// since there potential read objects are given to the added analyses.
-  void AnalysisHandler::readData( const std::string& filename ) {
+  void AnalysisHandler::readingData( const std::string& filename ) {
 
     YODA::Reader &reader = YODA::mkReader( filename );
 
