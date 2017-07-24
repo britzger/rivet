@@ -1,5 +1,5 @@
 // -*- C++ -*-
-#include "Rivet/Analysis.hh"
+#include "pluginALICE/HeavyIonAnalysis.hh"
 #include "Rivet/Projections/ChargedFinalState.hh"
 #include "Rivet/Tools/Cuts.hh"
 #include <fstream>
@@ -7,23 +7,21 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#define PT_BINS 4
-#define EVENT_TYPES 3
-
 namespace Rivet {
   
-  double quantile(double value, const Histo1DPtr hist);
-  
-  class ALICE_2012_I930312 : public Analysis {
+  class ALICE_2012_I930312 : public HeavyIonAnalysis {
   
   public:
     
     ALICE_2012_I930312() : 
-      Analysis("ALICE_2012_I930312")
+      HeavyIonAnalysis("ALICE_2012_I930312")
     {  }
 
 
     void init() {
+      HeavyIonAnalysis::init();
+
+      setCentralityMethod(HeavyIonAnalysis::ImpactParameter, 10000);
 
       // Charged final states with |eta| < 1.0 and 8 < pT < 15 GeV/c for trigger particles
       const Cut& cutTrigger = Cuts::abseta < 1.0 && Cuts::pT > 8*GeV && Cuts::pT < 15*GeV;
@@ -52,14 +50,6 @@ namespace Rivet {
 	//addProjection(mycfs, "CFSAssoc" + std::to_string(ipt));
       }
       
-      // Impact parameter distribution histogram for centrality calculation. If the histogram with the same name
-      // is loaded in readData() function, it will bind such preloaded histogram to the following histogram.
-      // Otherwise, empty histogram will be created
-      // @note the name was not discussed yet, this is only an example: calib_mult...
-      std::cout << "Initialization..." << std::endl;
-      _histCalibration = bookHisto1D("calib_impactpar_(eta<0.5)&&(pT>50*MeV)", 200, 0, 20.0, "Calibration histogram", "xlabel", "ylabel");
-      _histControl = bookHisto1D("control_impactpar_(eta<0.5)&&(pT>50*MeV)", 200, 0, 20.0, "Control histogram", "xlabel", "ylabel");
-      
       // Histograms and variables initialization. Do it for each centrality range
       for (int ipt = 0; ipt < PT_BINS; ipt++) {
 	_histYield[0][ipt] = bookHisto1D("Yield_pp_" + std::to_string(ipt), 36, -0.5 * M_PI, 1.5 * M_PI,
@@ -76,33 +66,40 @@ namespace Rivet {
 							   "Associated particle per trigger particle yield no bkg", "#Delta#eta (rad)", "1 / N_trig dN_assoc / d#Delta#eta (rad^-1)");
 	
       }
-      _histTriggerCounter[0] = bookHisto1D("Trigger_pp", PT_BINS, 0.0, PT_BINS, "Trigger counter pp", "pt bin", "N");
-      _histTriggerCounter[1] = bookHisto1D("Trigger_central", PT_BINS, 0.0, PT_BINS, "Trigger counter central", "pt bin", "N");
-      _histTriggerCounter[2] = bookHisto1D("Trigger_peripheral", PT_BINS, 0.0, PT_BINS, "Trigger counter peripheral", "pt bin", "N");
+      _histTriggerCounter = bookHisto1D("Trigger", EVENT_TYPES, 0.0, EVENT_TYPES, "Trigger counter", "event type", "N");
+      //_histTriggerCounter[0] = bookHisto1D("Trigger_pp", PT_BINS, 0.0, PT_BINS, "Trigger counter pp", "pt bin", "N");
+      //_histTriggerCounter[1] = bookHisto1D("Trigger_central", PT_BINS, 0.0, PT_BINS, "Trigger counter central", "pt bin", "N");
+      //_histTriggerCounter[2] = bookHisto1D("Trigger_peripheral", PT_BINS, 0.0, PT_BINS, "Trigger counter peripheral", "pt bin", "N");
       
       _histIAA[0] = bookHisto1D(1, 1, 1);
-      _histIAA[1] = bookHisto1D(4, 1, 1);
+      _histIAA[1] = bookHisto1D(2, 1, 1);
       _histIAA[2] = bookHisto1D(5, 1, 1);
-      _histIAA[3] = bookHisto1D(6, 1, 1);
-      
+
+      _histIAA[3] = bookHisto1D(3, 1, 1);
+      _histIAA[4] = bookHisto1D(4, 1, 1);
+      _histIAA[5] = bookHisto1D(6, 1, 1);
     }
 
     void analyze(const Event& event) {
       
-      if (event.genEvent()->heavy_ion()) {
-	std::cout << "HI EVENT" << std::endl;
+      std::pair<HepMC::GenParticle*,HepMC::GenParticle*> beam_pair = event.genEvent()->beam_particles();
+      std::cout << "PDG ID 1: " << (std::get<0>(beam_pair))->pdg_id() << std::endl;
+      std::cout << "PDG ID 2: " << (std::get<1>(beam_pair))->pdg_id() << std::endl;
+      bool is_heavy_ion = ((std::get<0>(beam_pair))->pdg_id() == 1000822080) && ((std::get<1>(beam_pair))->pdg_id() == 1000822080);
+      if (is_heavy_ion) {
+	std::cout << "HI EVENT ";
       } else {
-	std::cout << "PP EVENT" << std::endl;
+	std::cout << "PP EVENT ";
       }
-      std::cout << event.genEvent()->heavy_ion() << std::endl;
+      std::cout << event.genEvent()->heavy_ion();
       
       const ChargedFinalState& triggerFinalState = applyProjection<ChargedFinalState>(event, "CFSTrigger");
       Particles triggerParticles = triggerFinalState.particlesByPt();
-      std::cout << "Trigger particles: " << triggerParticles.size() << std::endl;
+      std::cout << "trig: " << triggerParticles.size();
       
       ChargedFinalState associatedFinalState[PT_BINS];
       Particles associatedParticles[PT_BINS];
-      std::cout << "Associated particles: ";
+      std::cout << ", assoc: ";
       for (int ipt = 0; ipt < PT_BINS; ipt++) {
 	associatedFinalState[ipt] = applyProjection<ChargedFinalState>(event, "CFSAssoc" + std::to_string(ipt));
 	associatedParticles[ipt] = associatedFinalState[ipt].particlesByPt();
@@ -111,40 +108,55 @@ namespace Rivet {
       std::cout << std::endl;
       
       // Check event type
-      if (event.genEvent()->heavy_ion()) {
-	// For PbPb events fill calibration and control histogram
-	if (_histCalibration->numEntries() >= 10000) {
-	  _histControl->fill(event.genEvent()->heavy_ion() ? event.genEvent()->heavy_ion()->impact_parameter() : -1.0, 1);
-	} else {
-	  _histCalibration->fill(event.genEvent()->heavy_ion() ? event.genEvent()->heavy_ion()->impact_parameter() : -1.0, 1);
-	  // Veto event in case there are not enough events in calibration histogram
-	  vetoEvent;
-	}
-	double centr = quantile(event.genEvent()->heavy_ion()->impact_parameter(), _histCalibration) * 100.0;
-	if (centr > 0.0 && centr < 5.0)
+      string event_string = "";
+      if (is_heavy_ion) {
+	double centr = centrality(event);
+	std::cout << "centrality: " << centr << std::endl;
+	if (centr > 0.0 && centr < 5.0) {
 	  event_type = 1; // PbPb, central
-	else if (centr > 60.0 && centr < 90.0)
+	  event_string = "PbPb central";
+	}
+	else if (centr > 60.0 && centr < 90.0) {
 	  event_type = 2; // PbPb, peripherial
-	else
+	  event_string = "PbPb peripheral";
+	}
+	else {
 	  event_type = 3; // PbPb, other
+	  event_string = "PbPb other";
+	}
       } else {
 	event_type = 0; // pp
+	event_string = "pp";
       }
-      std::cout << "Event type: " << event_type << std::endl;
+      std::cout << "ev type: " << event_string << " (" << event_type << ")" << std::endl;
       
       if (event_type == 3)
 	vetoEvent;
       
+      _histTriggerCounter->fill(event_type, triggerParticles.size());
+      
       // Loop over trigger particles
       foreach (const Particle& triggerParticle, triggerParticles) {
-	
-	for (int ipt = 0; ipt < PT_BINS; ipt++) {	  
-	  if (associatedParticles[ipt].size() > 1 || 
+	std::cout << "Trigger particle" << std::endl;
+	for (int ipt = 0; ipt < PT_BINS; ipt++) {
+	  std::cout << "pt bin " << ipt << std::endl;
+	  /*if (associatedParticles[ipt].size() > 1 || 
 	      (associatedParticles[ipt].size() == 1 && associatedParticles[ipt].at(0) != triggerParticle)) {
 	    num_trig[ipt] += 1;
 	    _histTriggerCounter[event_type]->fill(ipt, 1);
-	    std::cout << "Found some associated particles" << std::endl;
-	    foreach (const Particle& associatedParticle, associatedParticles[ipt]) {
+	    std::cout << "Found some associated particles" << std::endl;*/
+	  /*foreach (const Particle& associatedParticle, associatedParticles[ipt]) {
+	    if (associatedParticle != triggerParticle) {
+	      if (triggerParticle.pt() > associatedParticle.pt()) {
+		_histTriggerCounter[event_type]->fill(ipt, 1);
+		std::cout << "Adding trigger particle" << std::endl;
+		break;
+	      }
+	    }
+	    }*/
+	  foreach (const Particle& associatedParticle, associatedParticles[ipt]) {
+	    std::cout << "Associated particle" << std::endl;
+	    if (associatedParticle != triggerParticle) {
 	      if (triggerParticle.pt() > associatedParticle.pt()) {
 		double dPhi = triggerParticle.phi() - associatedParticle.phi();
 		while (dPhi > 1.5 * M_PI)  { dPhi -= 2 * M_PI; }
@@ -153,13 +165,16 @@ namespace Rivet {
 		_histYield[event_type][ipt]->fill(dPhi, 1);
 	      }
 	    }
+	    //}
 	  }
-	  else {
+	  //else {
+	  /*if (trigger_added == false) {
 	    std::cout << "No associated particles with pt = " << pt_limits[ipt] << "-" << pt_limits[ipt + 1] << " GeV/c found for that trigger particle" << std::endl;
-	  }
+	    }*/
 	}
 	
       }
+      std::cout << std::endl;
       
     }
 
@@ -181,11 +196,13 @@ namespace Rivet {
       double nearSide[EVENT_TYPES][PT_BINS] = { {0.0} };
       double awaySide[EVENT_TYPES][PT_BINS] = { {0.0} };
       
-      std::cout << "Calibration entries: " << _histCalibration->numEntries() << std::endl;
-      std::cout << "Control entries: " << _histControl->numEntries() << std::endl;
-      std::cout << "pp trigger counter histogram entries: " <<_histTriggerCounter[0]->numEntries() << std::endl;
-      std::cout << "Central trigger counter histogram entries: " << _histTriggerCounter[1]->numEntries() << std::endl;
-      std::cout << "Peripheral trigger counter histogram entries: " << _histTriggerCounter[2]->numEntries() << std::endl;
+      std::cout << "Trigger counter histogram entries: " << 
+	_histTriggerCounter->bin(0).sumW() << " " << 
+	_histTriggerCounter->bin(1).sumW() << " " << 
+	_histTriggerCounter->bin(2).sumW() << std::endl;
+      //std::cout << "pp trigger counter histogram entries: " << _histTriggerCounter[0]->numEntries() << std::endl;
+      //std::cout << "Central trigger counter histogram entries: " << _histTriggerCounter[1]->numEntries() << std::endl;
+      //std::cout << "Peripheral trigger counter histogram entries: " << _histTriggerCounter[2]->numEntries() << std::endl;
       std::cout << "pp yield pt bin 0, entries: " << _histYield[0][0]->numEntries() << std::endl;
       std::cout << "pp yield pt bin 1, entries: " << _histYield[0][1]->numEntries() << std::endl;
       std::cout << "pp yield pt bin 2, entries: " << _histYield[0][2]->numEntries() << std::endl;
@@ -205,8 +222,8 @@ namespace Rivet {
 	for (int ipt = 0; ipt < PT_BINS; ipt++) {
 	  
 	  // Check if histograms are fine
-	  if (_histTriggerCounter[itype]->numEntries() == 0 || _histYield[itype][ipt]->numEntries() == 0) {
-	    std::cout << _histTriggerCounter[itype]->numEntries() << std::endl;
+	  if (_histTriggerCounter->numEntries() == 0 || _histYield[itype][ipt]->numEntries() == 0) {
+	    std::cout << _histTriggerCounter->numEntries() << std::endl;
 	    std::cout << _histYield[itype][ipt]->numEntries() << std::endl;
 	    std::cout << "There are no entries in one of the histograms" << std::endl;
 	    continue;
@@ -214,9 +231,10 @@ namespace Rivet {
 	  
 	  // Scale yield histogram
 	  std::cout << "Scaling yield histograms..." << std::endl;
-	  if (_histTriggerCounter[itype]->bin(ipt).sumW() != 0) {
+	  if (_histTriggerCounter->bin(itype).sumW() != 0) {
 	    std::cout << "Scaling histogram type " << itype << " pt bin " << ipt << "..." << std::endl;
-	    scale(_histYield[itype][ipt], (1. / _histTriggerCounter[itype]->bin(ipt).sumW()));
+	    std::cout << "Scaling factor: " << _histTriggerCounter->bin(itype).sumW() << std::endl;
+	    scale(_histYield[itype][ipt], (1. / _histTriggerCounter->bin(itype).sumW()));
 	  }
 	  
 	  // Calculate background
@@ -267,29 +285,34 @@ namespace Rivet {
       // Print I_CP results
       std::cout << "Near side" << std::endl;
       for (int ipt = 0; ipt < PT_BINS; ipt++) {
-	std::cout << "I_AA, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << nearSide[0][ipt] / nearSide[1][ipt] << std::endl;
-	_histIAA[0]->fillBin(ipt, nearSide[0][ipt] / nearSide[1][ipt]);
-	std::cout << "I_CP, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << nearSide[1][ipt] / nearSide[2][ipt] << std::endl;
-	_histIAA[1]->fillBin(ipt, nearSide[1][ipt] / nearSide[2][ipt]);
+	std::cout << "I_AA 0-5%/pp, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << nearSide[1][ipt] / nearSide[0][ipt] << std::endl;
+	_histIAA[0]->fillBin(ipt, nearSide[1][ipt] / nearSide[0][ipt]);
+	std::cout << "I_AA 60-90%/pp, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << nearSide[2][ipt] / nearSide[0][ipt] << std::endl;
+	_histIAA[1]->fillBin(ipt, nearSide[2][ipt] / nearSide[0][ipt]);
+	std::cout << "I_CP 0-5%/60-90%, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << nearSide[1][ipt] / nearSide[2][ipt] << std::endl;
+	_histIAA[2]->fillBin(ipt, nearSide[1][ipt] / nearSide[2][ipt]);
       }
       std::cout << "Away side" << std::endl;
       for (int ipt = 0; ipt < PT_BINS; ipt++) {	
-	std::cout << "I_AA, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << awaySide[0][ipt] / awaySide[1][ipt] << std::endl;
-	_histIAA[2]->fillBin(ipt, awaySide[0][ipt] / awaySide[1][ipt]);
-	std::cout << "I_CP, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << awaySide[1][ipt] / awaySide[2][ipt] << std::endl;
-	_histIAA[3]->fillBin(ipt, awaySide[1][ipt] / awaySide[2][ipt]);
+	std::cout << "I_AA 0-5%/pp, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << awaySide[1][ipt] / awaySide[0][ipt] << std::endl;
+	_histIAA[3]->fillBin(ipt, awaySide[1][ipt] / awaySide[0][ipt]);
+	std::cout << "I_AA 60-90%/pp, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << awaySide[2][ipt] / awaySide[0][ipt] << std::endl;
+	_histIAA[4]->fillBin(ipt, awaySide[2][ipt] / awaySide[0][ipt]);
+	std::cout << "I_CP 0-5%/60-90%, pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << awaySide[1][ipt] / awaySide[2][ipt] << std::endl;
+	_histIAA[5]->fillBin(ipt, awaySide[1][ipt] / awaySide[2][ipt]);
       }
       
     }
     
   private:
     
-    Histo1DPtr _histCalibration;
-    Histo1DPtr _histControl;
+    static const int PT_BINS = 4;
+    static const int EVENT_TYPES = 3;
+
     Histo1DPtr _histYield[EVENT_TYPES][PT_BINS];
     Histo1DPtr _histYieldBkgRemoved[EVENT_TYPES][PT_BINS];
-    Histo1DPtr _histTriggerCounter[EVENT_TYPES];
-    Histo1DPtr _histIAA[4];
+    Histo1DPtr _histTriggerCounter;
+    Histo1DPtr _histIAA[6];
     int num_trig[PT_BINS];
     int pt_limits[5];
     int event_type;
@@ -298,24 +321,4 @@ namespace Rivet {
 
   // The hook for the plugin system
   DECLARE_RIVET_PLUGIN(ALICE_2012_I930312);
-  
-  // Function for calculating the quantile from histogram at selected value
-  // (below this value, including overflow)
-  // @note this function is here temporarily, it will be moved and modified 
-  // to create a general function for calculating the quantile of a histogram
-  double quantile(double value, const Histo1DPtr hist) {
-    
-    // Check if there are entries in the histogram
-    if (hist->numEntries() == 0) {
-      throw WeightError("There are no entires in the histogram!");
-    }
-    
-    // Integration ranges
-    size_t upperBin = hist->binIndexAt(value);
-
-    // Calculate centrality as percentile
-    return hist->integralTo(upperBin, true) / hist->integral(true);
-    
-  }
-
 }
