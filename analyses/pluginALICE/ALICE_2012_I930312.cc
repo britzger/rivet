@@ -22,7 +22,7 @@ namespace Rivet {
       HeavyIonAnalysis::init();
       
       // Set centrality method
-      setCentralityMethod(HeavyIonAnalysis::ImpactParameter, 10000);
+      addCentralityMethod(HeavyIonAnalysis::ImpactParameter, 10000, "method1");
 
       // Charged final states with |eta| < 1.0 and 8 < pT < 15 GeV/c for trigger particles
       const Cut& cutTrigger = Cuts::abseta < 1.0 && Cuts::pT > 8*GeV && Cuts::pT < 15*GeV;
@@ -81,11 +81,7 @@ namespace Rivet {
     void analyze(const Event& event) {
       
       // Check if heavy-ion event
-      std::pair<HepMC::GenParticle*,HepMC::GenParticle*> beam_pair = event.genEvent()->beam_particles();
-      std::cout << "PDG ID 1: " << (std::get<0>(beam_pair))->pdg_id() << std::endl;
-      std::cout << "PDG ID 2: " << (std::get<1>(beam_pair))->pdg_id() << std::endl;
-      bool is_heavy_ion = ((std::get<0>(beam_pair))->pdg_id() == 1000822080) && ((std::get<1>(beam_pair))->pdg_id() == 1000822080);
-      if (is_heavy_ion) {
+      if (HeavyIonAnalysis::is_heavy_ion(event)) {
 	std::cout << "HI EVENT: ";
       } else {
 	std::cout << "PP EVENT: ";
@@ -109,8 +105,8 @@ namespace Rivet {
       std::cout << std::endl;
       
       // Check event type
-      if (is_heavy_ion) {
-	double centr = centrality(event);
+      if (HeavyIonAnalysis::is_heavy_ion(event)) {
+	double centr = centrality(event, "method1");
 	std::cout << "centrality: " << centr << std::endl;
 	if (centr > 0.0 && centr < 5.0)
 	  event_type = 1; // PbPb, central
@@ -216,7 +212,9 @@ namespace Rivet {
 	    std::cout << "Scaling histogram type " << itype << " pt bin " << ipt << "..." << std::endl;
 	    std::cout << "Scaling factor: " << _histTriggerCounter->bin(itype).sumW() << std::endl;
 	    scalingFactor[itype] = 1. / _histTriggerCounter->bin(itype).sumW();
+	    std::cout << "Bin 1 before scaling: " << _histYield[itype][ipt]->bin(1).sumW() << std::endl;
 	    scale(_histYield[itype][ipt], (1. / _histTriggerCounter->bin(itype).sumW()));
+	    std::cout << "Bin 1 after scaling: " << _histYield[itype][ipt]->bin(1).sumW() << std::endl;
 	  }
 	  
 	  // Calculate background
@@ -266,9 +264,11 @@ namespace Rivet {
 	  // Integrate near-side yield
 	  std::cout << "Integrating near-side yield..." << std::endl;
 	  unsigned int lowerBin = _histYield[itype][ipt]->binIndexAt(-0.7);
-	  unsigned int upperBin = _histYield[itype][ipt]->binIndexAt(0.7);
+	  unsigned int upperBin = _histYield[itype][ipt]->binIndexAt(0.7) + 1;
 	  nbins = upperBin - lowerBin;
 	  numberOfBins[itype][ipt][0] = nbins;
+	  std::cout << _histYield[itype][ipt]->integralRange(1, 1) << " " << _histYield[itype][ipt]->bin(1).sumW() << std::endl;
+	  std::cout << _histYield[itype][ipt]->integralRange(1, 2) << " " << _histYield[itype][ipt]->bin(1).sumW() + _histYield[itype][ipt]->bin(2).sumW() << std::endl;
 	  nearSide[itype][ipt] = _histYield[itype][ipt]->integralRange(lowerBin, upperBin) - nbins * background[itype][ipt];
 	  numberOfEntries[itype][ipt][0] = _histYield[itype][ipt]->integralRange(lowerBin, upperBin) * _histTriggerCounter->bin(itype).sumW();
 	  std::cout << "_histYield[" << itype << "][" << ipt << "]->integralRange(" << lowerBin << ", " << upperBin << ") - nbins * bkg = " << 
@@ -278,7 +278,7 @@ namespace Rivet {
 	  // Integrate away-side yield
 	  std::cout << "Integrating away-side yield..." << std::endl;
 	  lowerBin = _histYield[itype][ipt]->binIndexAt(M_PI - 0.7);
-	  upperBin = _histYield[itype][ipt]->binIndexAt(M_PI + 0.7);
+	  upperBin = _histYield[itype][ipt]->binIndexAt(M_PI + 0.7) + 1;
 	  nbins = upperBin - lowerBin;
 	  numberOfBins[itype][ipt][1] = nbins;
 	  awaySide[itype][ipt] = _histYield[itype][ipt]->integralRange(lowerBin, upperBin) - nbins * background[itype][ipt];
