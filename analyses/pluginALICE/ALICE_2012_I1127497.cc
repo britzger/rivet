@@ -1,5 +1,5 @@
 // -*- C++ -*-
-#include "Rivet/Analysis.hh"
+#include "pluginALICE/HeavyIonAnalysis.hh"
 #include "Rivet/Projections/ChargedFinalState.hh"
 #include <fstream>
 
@@ -13,11 +13,13 @@
 namespace Rivet {
 
 
-  class ALICE_2012_I1127497 : public Analysis {
+  class ALICE_2012_I1127497 : public HeavyIonAnalysis {
   
   public:
     
-    ALICE_2012_I1127497() : Analysis("ALICE_2012_I1127497") {  }
+    ALICE_2012_I1127497() : 
+      HeavyIonAnalysis("ALICE_2012_I1127497") 
+    {  }
 
 
     void init() {

@@ -1,35 +1,33 @@
 // -*- C++ -*-
-#include "Rivet/Analysis.hh"
+#include "pluginALICE/HeavyIonAnalysis.hh"
 #include "Rivet/Projections/ChargedFinalState.hh"
-#include "Rivet/Projections/Centrality.hh"
 #include "Rivet/Tools/Cuts.hh"
 #include <fstream>
-//#include "Centrality.hh"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
 
 namespace Rivet {
 
-  class ALICE_2010_I880049 : public Analysis {
+  class ALICE_2010_I880049 : public HeavyIonAnalysis {
   
   public:
     
     ALICE_2010_I880049() : 
-      Analysis("ALICE_2010_I880049")
+      HeavyIonAnalysis("ALICE_2010_I880049")
     {  }
 
 
     void init() {
-
+      HeavyIonAnalysis::init();
+      
+      // Set centrality method
+      addCentralityMethod(HeavyIonAnalysis::ImpactParameter, 10000, "method1");
+      
       // Charged final states with |eta| < 0.5 and pT > 50 MeV
       const Cut& cut = Cuts::abseta < 0.5 && Cuts::pT > 50*MeV;
       const ChargedFinalState cfs(cut);
       addProjection(cfs,"CFS");
-      
-      // Centrality projection for this analysis
-      Centrality centrality(cfs, Centrality::Method::ImpactParameter, 10000);
-      addProjection(centrality, "CENTR");
       
       // Histograms and variables initialization. Do it for each centrality range
       _histNchVsCentr = bookHisto1D(1, 1, 1);
@@ -41,11 +39,7 @@ namespace Rivet {
       const ChargedFinalState& charged = applyProjection<ChargedFinalState>(event, "CFS");
       Particles chargedParticles = charged.particlesByPt();
       
-      const Centrality& centralityProjection = applyProjection<Centrality>(event, "CENTR");
-      if (!centralityProjection.isValid())
-	vetoEvent;
-      
-      const double c = centralityProjection.getCentrality();
+      const double c = centrality(event, "ImpactParameterMethod");
       
       cout << "Centrality: " << c << endl;
       if ((c < 0.) || (c > 80.))

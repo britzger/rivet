@@ -263,8 +263,8 @@ namespace Rivet {
 	  
 	  // Integrate near-side yield
 	  std::cout << "Integrating near-side yield..." << std::endl;
-	  unsigned int lowerBin = _histYield[itype][ipt]->binIndexAt(-0.7);
-	  unsigned int upperBin = _histYield[itype][ipt]->binIndexAt(0.7) + 1;
+	  unsigned int lowerBin = _histYield[itype][ipt]->binIndexAt(-0.7 + 0.02);
+	  unsigned int upperBin = _histYield[itype][ipt]->binIndexAt( 0.7 - 0.02) + 1;
 	  nbins = upperBin - lowerBin;
 	  numberOfBins[itype][ipt][0] = nbins;
 	  std::cout << _histYield[itype][ipt]->integralRange(1, 1) << " " << _histYield[itype][ipt]->bin(1).sumW() << std::endl;

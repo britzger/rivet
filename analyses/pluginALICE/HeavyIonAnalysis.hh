@@ -1,5 +1,9 @@
 // -*- C++ -*-
+#ifndef RIVET_HeavyIonAnalysis_HH
+#define RIVET_HeavyIonAnalysis_HH
+
 #include "Rivet/Analysis.hh"
+#include "Rivet/Projections/ChargedFinalState.hh"
 
 namespace Rivet {
   
@@ -60,3 +64,5 @@ namespace Rivet {
     
   };
 }
+
+#endif
