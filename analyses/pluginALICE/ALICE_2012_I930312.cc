@@ -223,8 +223,12 @@ namespace Rivet {
 	  int nbins = 0;
 	  for (unsigned int ibin = 0; ibin < _histYield[itype][ipt]->numBins(); ibin++) {
 	    std::cout << "Bin " << ibin << std::endl;
-	    if (_histYield[itype][ipt]->bin(ibin).xMid() > (0.5 * M_PI - 0.4) &&
-		_histYield[itype][ipt]->bin(ibin).xMid() < (0.5 * M_PI + 0.4)) {
+	    if ((_histYield[itype][ipt]->bin(ibin).xMid() > (-0.5 * M_PI) && 
+		 _histYield[itype][ipt]->bin(ibin).xMid() < (-0.5 * M_PI + 0.4)) ||
+		(_histYield[itype][ipt]->bin(ibin).xMid() > (0.5 * M_PI - 0.4) &&
+		 _histYield[itype][ipt]->bin(ibin).xMid() < (0.5 * M_PI + 0.4)) ||
+		(_histYield[itype][ipt]->bin(ibin).xMid() > (1.5 * M_PI - 0.4) &&
+		 _histYield[itype][ipt]->bin(ibin).xMid() < (1.5 * M_PI))) {
 	      std::cout << "Adding " << _histYield[itype][ipt]->bin(ibin).sumW() << std::endl;
 	      sum += _histYield[itype][ipt]->bin(ibin).sumW();
 	      nbins++;
@@ -277,8 +281,8 @@ namespace Rivet {
 	  
 	  // Integrate away-side yield
 	  std::cout << "Integrating away-side yield..." << std::endl;
-	  lowerBin = _histYield[itype][ipt]->binIndexAt(M_PI - 0.7);
-	  upperBin = _histYield[itype][ipt]->binIndexAt(M_PI + 0.7) + 1;
+	  lowerBin = _histYield[itype][ipt]->binIndexAt(M_PI - 0.7 + 0.02);
+	  upperBin = _histYield[itype][ipt]->binIndexAt(M_PI + 0.7 - 0.02) + 1;
 	  nbins = upperBin - lowerBin;
 	  numberOfBins[itype][ipt][1] = nbins;
 	  awaySide[itype][ipt] = _histYield[itype][ipt]->integralRange(lowerBin, upperBin) - nbins * background[itype][ipt];
@@ -308,10 +312,11 @@ namespace Rivet {
 	int type2 = types2[ihist];
 	for (int ipt = 0; ipt < PT_BINS; ipt++) {
 	  std::cout << type_string[ihist] << ", pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << nearSide[type1][ipt] / nearSide[type2][ipt];
-	  dI = scalingFactor[type1] * sqrt(numberOfEntries[type1][ipt][near]) / nearSide[type2][ipt] + 
-	    scalingFactor[type2] * sqrt(numberOfEntries[type2][ipt][near]) * nearSide[type1][ipt] / (nearSide[type2][ipt] * nearSide[type2][ipt]) + 
-	    numberOfBins[type1][ipt][near] * backgroundError[type1][ipt] / nearSide[type2][ipt] +
-	    numberOfBins[type2][ipt][near] * backgroundError[type2][ipt] * nearSide[type1][ipt] / (nearSide[type2][ipt] * nearSide[type2][ipt]);
+	  dI = scalingFactor[type1] * scalingFactor[type1] * numberOfEntries[type1][ipt][near] + 
+	    scalingFactor[type2] * scalingFactor[type2] * numberOfEntries[type2][ipt][near] * nearSide[type1][ipt] * nearSide[type1][ipt] / (nearSide[type2][ipt] * nearSide[type2][ipt]) + 
+	    numberOfBins[type1][ipt][near] * numberOfBins[type1][ipt][near] * backgroundError[type1][ipt] * backgroundError[type1][ipt] +
+	    numberOfBins[type2][ipt][near] * numberOfBins[type2][ipt][near] * backgroundError[type2][ipt] * backgroundError[type2][ipt] * nearSide[type1][ipt] * nearSide[type1][ipt] / (nearSide[type2][ipt] * nearSide[type2][ipt]);
+	  dI = sqrt(dI)/nearSide[type2][ipt];
 	  std::cout << " +- " << dI << std::endl;	
 	  _histIAA[ihist]->addPoint(xval[ipt], nearSide[type1][ipt] / nearSide[type2][ipt], xerr[ipt], dI);
 	}
@@ -324,10 +329,11 @@ namespace Rivet {
 	int type2 = types2[ihist];
 	for (int ipt = 0; ipt < PT_BINS; ipt++) {
 	  std::cout << type_string[ihist] << ", pt=(" << pt_limits[ipt] << ", " << pt_limits[ipt+1] << "): " << awaySide[type1][ipt] / awaySide[type2][ipt];
-	  dI = scalingFactor[type1] * sqrt(numberOfEntries[type1][ipt][away]) / awaySide[type2][ipt] + 
-	    scalingFactor[type2] * sqrt(numberOfEntries[type2][ipt][away]) * awaySide[type1][ipt] / (awaySide[type2][ipt] * awaySide[type2][ipt]) + 
-	    numberOfBins[type1][ipt][away] * backgroundError[type1][ipt] / awaySide[type2][ipt] +
-	    numberOfBins[type2][ipt][away] * backgroundError[type2][ipt] * awaySide[type1][ipt] / (awaySide[type2][ipt] * awaySide[type2][ipt]);
+	  dI = scalingFactor[type1] * scalingFactor[type1] * numberOfEntries[type1][ipt][away] + 
+	    scalingFactor[type2] * scalingFactor[type2] * numberOfEntries[type2][ipt][away] * awaySide[type1][ipt] * awaySide[type1][ipt] / (awaySide[type2][ipt] * awaySide[type2][ipt]) + 
+	    numberOfBins[type1][ipt][away] * numberOfBins[type1][ipt][away] * backgroundError[type1][ipt] * backgroundError[type1][ipt] +
+	    numberOfBins[type2][ipt][away] * numberOfBins[type2][ipt][away] * backgroundError[type2][ipt] * backgroundError[type2][ipt] * awaySide[type1][ipt] * awaySide[type1][ipt] / (awaySide[type2][ipt] * awaySide[type2][ipt]);
+	  dI = sqrt(dI)/awaySide[type2][ipt];
 	  std::cout << " +- " << dI << std::endl;	
 	  _histIAA[ihist + 3]->addPoint(xval[ipt], awaySide[type1][ipt] / awaySide[type2][ipt], xerr[ipt], dI);
 	}
