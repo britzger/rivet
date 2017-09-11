@@ -22,7 +22,7 @@ namespace Rivet {
       HeavyIonAnalysis::init();
       
       // Set centrality method
-      addCentralityMethod(HeavyIonAnalysis::ImpactParameter, 10000, "method1");
+      addCentralityMethod(HeavyIonAnalysis::ImpactParameter, 10000, "ImpactParameterMethod");
       
       // Charged final states with |eta| < 0.5 and pT > 50 MeV
       const Cut& cut = Cuts::abseta < 0.5 && Cuts::pT > 50*MeV;
